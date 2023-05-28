@@ -1,8 +1,10 @@
 import 'package:appwrite/models.dart' as model;
 import 'package:devnexus/apis/auth_api.dart';
+import 'package:devnexus/apis/user_api.dart';
 import 'package:devnexus/core/utils.dart';
 import 'package:devnexus/features/auth/view/login_view.dart';
 import 'package:devnexus/features/home/view/home_view.dart';
+import 'package:devnexus/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +12,7 @@ final authControllerProvider =
     StateNotifierProvider<AuthController, bool>((ref) {
   return AuthController(
     authAPI: ref.watch(authAPIProvider),
+    userAPI: ref.watch(userAPIProvider),
   );
 });
 
@@ -20,8 +23,12 @@ final currentUserAccountProvider = FutureProvider((ref) {
 
 class AuthController extends StateNotifier<bool> {
   final AuthAPI _authAPI;
-  AuthController({required AuthAPI authAPI})
-      : _authAPI = authAPI,
+  final UserAPI _userAPI;
+  AuthController({
+    required AuthAPI authAPI,
+    required UserAPI userAPI,
+  })  : _authAPI = authAPI,
+        _userAPI = userAPI,
         super(false);
   //state = isLoading
 
@@ -40,8 +47,21 @@ class AuthController extends StateNotifier<bool> {
     state = false;
     res.fold(
       (l) => showSnackBar(context, l.message),
-      (r) {
-        Navigator.push(context, LoginView.route());
+      (r) async {
+        UserModel userModel = UserModel(
+          email: email,
+          name: getNameFromEmail(email),
+          followers: const [],
+          following: const [],
+          profilePic: '',
+          uid: '',
+          bio: '',
+        );
+        final res2 = await _userAPI.saveUserData(userModel);
+        res2.fold((l) => showSnackBar(context, l.message), (r) {
+          showSnackBar(context, 'Acoount Created! Please Login');
+          Navigator.push(context, LoginView.route());
+        });
       },
     );
   }
